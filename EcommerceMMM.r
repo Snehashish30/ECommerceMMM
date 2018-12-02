@@ -281,49 +281,51 @@ t <- data%>%group_by(Product_Vertical,ptag_correct)%>%summarise(avg_price = medi
 View(t)
 
 
-box <- boxplot.stats(RFM$Product_MRP)
-out <- box$out
-
-RFM1 <- RFM[ !RFM$Product_MRP %in% out, ]
-
-RFM <- RFM1
-
-box <- boxplot.stats(RFM$Freq)
-out <- box$out
-
-RFM1 <- RFM[ !RFM$Freq %in% out, ]
-
-RFM <- RFM1
-
-box <- boxplot.stats(RFM$Recency)
-out <- box$out
-
-RFM1 <- RFM[ !RFM$Recency %in% out, ]
-
-RFM <- RFM1
-
-## Standardisation of data
-
-RFM_norm1 <- RFM[,-1]
-
-RFM_norm1$Product_MRP <- scale(RFM_norm1$Product_MRP)
-RFM_norm1$Freq <- scale(RFM_norm1$Freq)
-RFM_norm1$Recency <- scale(RFM_norm1$Recency)
-
-## Implementing K-Means algorithm
-
-clus3 <- kmeans(RFM_norm1, centers = 3, iter.max = 50, nstart = 50)
-
-RFM <- cbind(RFM, clus3$cluster)
-
-colnames(RFM)[5] <- "ClusterID"
-
-RFM <- RFM[, c("FSN_ID","ClusterID")]
-
+# box <- boxplot.stats(RFM$Product_MRP)
+# out <- box$out
+# 
+# RFM1 <- RFM[ !RFM$Product_MRP %in% out, ]
+# 
+# RFM <- RFM1
+# 
+# box <- boxplot.stats(RFM$Freq)
+# out <- box$out
+# 
+# RFM1 <- RFM[ !RFM$Freq %in% out, ]
+# 
+# RFM <- RFM1
+# 
+# box <- boxplot.stats(RFM$Recency)
+# out <- box$out
+# 
+# RFM1 <- RFM[ !RFM$Recency %in% out, ]
+# 
+# RFM <- RFM1
+# 
+# ## Standardisation of data
+# 
+# RFM_norm1 <- RFM[,-1]
+# 
+# RFM_norm1$Product_MRP <- scale(RFM_norm1$Product_MRP)
+# RFM_norm1$Freq <- scale(RFM_norm1$Freq)
+# RFM_norm1$Recency <- scale(RFM_norm1$Recency)
+# 
+# ## Implementing K-Means algorithm
+# 
+# clus3 <- kmeans(RFM_norm1, centers = 3, iter.max = 50, nstart = 50)
+# 
+# RFM <- cbind(RFM, clus3$cluster)
+# 
+# colnames(RFM)[5] <- "ClusterID"
+# 
+# RFM <- RFM[, c("FSN_ID","ClusterID")]
+# 
 
 #Merge the clusters with original data
 
 rawdata<- merge(rawdata, RFM, by="FSN_ID", all.x=TRUE)
+master_rawdata <- rawdata
+rawdata <- rawdata%>%left_join(data[,c(1,7)], by = c("FSN_ID"))
 
 colnames(rawdata)[28] <- "ProductSellCategory"
 
@@ -338,22 +340,24 @@ rm(monetary)
 rm(box)
 rm(df)
 rm(clus3)
-
+rm(temp)
+rm(tags)
+rm(tags_order)
 #The out liers removed while creating RFM data, when merged into original data, the corresponding ClusterID would be NA. Assign those records with the clusterID as 4 which corresponds to NA Data
 
-rawdata$ProductSellCategory[which(is.na(rawdata$ProductSellCategory))]<-4
-
-#change the clusterID~productSellCategory to factor type
-rawdata$ProductSellCategory <- as.factor(rawdata$ProductSellCategory)
-
-
-rawdata$ProductSellCategory_1 <- ifelse(rawdata$ProductSellCategory ==1 ,1,0)
-rawdata$ProductSellCategory_2 <- ifelse(rawdata$ProductSellCategory ==2 ,1,0)
-rawdata$ProductSellCategory_3 <- ifelse(rawdata$ProductSellCategory ==3 ,1,0)
-rawdata$ProductSellCategory_4 <- ifelse(rawdata$ProductSellCategory ==4 ,1,0)
-
-#delelte the main column after creating the dummy columns out of it
-rawdata$ProductSellCategory <- NULL
+# rawdata$ProductSellCategory[which(is.na(rawdata$ProductSellCategory))]<-4
+# 
+# #change the clusterID~productSellCategory to factor type
+# rawdata$ProductSellCategory <- as.factor(rawdata$ProductSellCategory)
+# 
+# 
+# rawdata$ProductSellCategory_1 <- ifelse(rawdata$ProductSellCategory ==1 ,1,0)
+# rawdata$ProductSellCategory_2 <- ifelse(rawdata$ProductSellCategory ==2 ,1,0)
+# rawdata$ProductSellCategory_3 <- ifelse(rawdata$ProductSellCategory ==3 ,1,0)
+# rawdata$ProductSellCategory_4 <- ifelse(rawdata$ProductSellCategory ==4 ,1,0)
+# 
+# #delelte the main column after creating the dummy columns out of it
+# rawdata$ProductSellCategory <- NULL
 ########################################################################################################################################################################
 
 # Merging data from different files
@@ -406,18 +410,18 @@ GamingAccessory_df <- subset(orders, Product_Sub_Category=="GamingAccessory")
 holiday_aggr <- aggregate(holiday_freq~order_week,holiday_df,FUN = sum)
 
 kpis<-function(df){
-  df <- df%>%filter(ProductSellCategory_1 == 1)
+  
   Prod_Aggr<- aggregate(cbind(List_Price,Product_MRP,SLA,Discount_Percent,Product_Procurement_SLA,NPS)~ order_week,df,FUN = mean)
   
   gmv_aggr<- aggregate(cbind(GMV,Units)~order_week,df,FUN = sum)
   
-  prodType_aggr<- aggregate(cbind(ProductSellCategory_1,ProductSellCategory_2,ProductSellCategory_3,ProductSellCategory_4, SLA_Breach)~order_week,df,FUN=sum)
+  #prodType_aggr<- aggregate(cbind(ProductSellCategory_1,ProductSellCategory_2,ProductSellCategory_3,ProductSellCategory_4, SLA_Breach)~order_week,df,FUN=sum)
   
   payType_aggr <- aggregate(cbind(prepaid_orders,COD_orders)~order_week,df,FUN=sum)
   
   #merging the various aggregates
   final_df<- merge(Prod_Aggr,gmv_aggr)
-  final_df<- merge(final_df,prodType_aggr)
+  #final_df<- merge(final_df,prodType_aggr)
   final_df<-merge(final_df,payType_aggr)
   final_df<- merge(final_df,holiday_aggr,all.x = TRUE)
   final_df$holiday_freq[is.na(final_df$holiday_freq)] <-0
@@ -428,53 +432,85 @@ kpis<-function(df){
   return(final_df)
   
 }
-#adstock <- read.csv("adstockFile.csv", stringsAsFactors = F)
-CameraAccessory_final <- kpis(CameraAccessory_df)
-GamingAccessory_final <- kpis(GamingAccessory_df)
-HomeAudio_final <- kpis(HomeAudio_df)
+adstock <- read.csv("adstockFile.csv", stringsAsFactors = F)
+#We need 3 models for each product tag
+CameraAccessory_df1 <- CameraAccessory_df%>%filter(ProductSellCategory == "Mass")
+CameraAccessory_Mass_final <- kpis(CameraAccessory_df1)
+CameraAccessory_df1 <- CameraAccessory_df%>%filter(ProductSellCategory == "Premium")
+CameraAccessory_Premium_final <- kpis(CameraAccessory_df1)
+CameraAccessory_df1 <- CameraAccessory_df%>%filter(ProductSellCategory == "Aspiring")
+CameraAccessory_Aspiring_final <- kpis(CameraAccessory_df1)
+
+#Gaming Accessories
+GamingAccessory_df1 <- GamingAccessory_df%>%filter(ProductSellCategory == "Mass")
+GamingAccessory_Mass_final <- kpis(GamingAccessory_df1)
+GamingAccessory_df1 <- GamingAccessory_df%>%filter(ProductSellCategory == "Premium")
+GamingAccessory_Premium_final <- kpis(GamingAccessory_df1)
+GamingAccessory_df1 <- GamingAccessory_df%>%filter(ProductSellCategory == "Aspiring")
+GamingAccessory_Aspiring_final <- kpis(GamingAccessory_df1)
+
+#HomeAudio
+HomeAudio_df1 <- HomeAudio_df%>%filter(ProductSellCategory == "Mass")
+HomeAudio_Mass_final <- kpis(HomeAudio_df1)
+HomeAudio_df1 <- HomeAudio_df%>%filter(ProductSellCategory == "Premium")
+HomeAudio_Premium_final <- kpis(HomeAudio_df1)
+HomeAudio_df1 <- HomeAudio_df%>%filter(ProductSellCategory == "Aspiring")
+HomeAudio_Aspiring_final <- kpis(HomeAudio_df1)
+
 #######################################################################################################################################################
 #Plotting the effect of advertisment on Total sales
 # CAmera Accessories
+options(scipen=999)
 plot_grid(
-  ggplot(CameraAccessory_final,aes(TV,GMV))+geom_point()+ geom_smooth()+ labs(x = "TV Advertisment", y = "GMV"),
-  ggplot(CameraAccessory_final,aes(Digital,GMV))+geom_point()+ geom_smooth()+ labs(x = "Digital Advertisment", y = "GMV"),
-  ggplot(CameraAccessory_final,aes(Sponsorship,GMV))+geom_point()+ geom_smooth()+ labs(x = "Sponsorship", y = "GMV"),
-  ggplot(CameraAccessory_final,aes(Content.Marketing,GMV))+geom_point()+ geom_smooth()+ labs(x = "Content Marketing", y = "GMV"),
-  ggplot(CameraAccessory_final,aes(Online_marketing,GMV))+geom_point()+ geom_smooth()+ labs(x = "Online Marketing", y = "GMV"),
-  ggplot(CameraAccessory_final,aes(Affiliates,GMV))+geom_point()+ geom_smooth()+ labs(x = "Affiliates", y = "GMV"),
-  ggplot(CameraAccessory_final,aes(SEM,GMV))+geom_point()+ geom_smooth()+ labs(x = "SEM", y = "GMV")
+  ggplot(CameraAccessory_Mass_final,aes(TV,GMV))+geom_point()+ geom_smooth()+ labs(x = "TV Advertisment", y = "GMV"),
+  ggplot(CameraAccessory_Mass_final,aes(Digital,GMV))+geom_point()+ geom_smooth()+ labs(x = "Digital Advertisment", y = "GMV"),
+  ggplot(CameraAccessory_Mass_final,aes(Sponsorship,GMV))+geom_point()+ geom_smooth()+ labs(x = "Sponsorship", y = "GMV"),
+  ggplot(CameraAccessory_Mass_final,aes(Content.Marketing,GMV))+geom_point()+ geom_smooth()+ labs(x = "Content Marketing", y = "GMV"),
+  ggplot(CameraAccessory_Mass_final,aes(Online_marketing,GMV))+geom_point()+ geom_smooth()+ labs(x = "Online Marketing", y = "GMV"),
+  ggplot(CameraAccessory_Mass_final,aes(Affiliates,GMV))+geom_point()+ geom_smooth()+ labs(x = "Affiliates", y = "GMV"),
+  ggplot(CameraAccessory_Mass_final,aes(SEM,GMV))+geom_point()+ geom_smooth()+ labs(x = "SEM", y = "GMV")
 )
 
-# Home Audio
 plot_grid(
-  ggplot(HomeAudio_final,aes(TV,GMV))+geom_point()+ geom_smooth()+ labs(x = "TV Advertisment", y = "GMV"),
-  ggplot(HomeAudio_final,aes(Digital,GMV))+geom_point()+ geom_smooth()+ labs(x = "Digital Advertisment", y = "GMV"),
-  ggplot(HomeAudio_final,aes(Sponsorship,GMV))+geom_point()+ geom_smooth()+ labs(x = "Sponsorship", y = "GMV"),
-  ggplot(HomeAudio_final,aes(Content.Marketing,GMV))+geom_point()+ geom_smooth()+ labs(x = "Content Marketing", y = "GMV"),
-  ggplot(HomeAudio_final,aes(Online.marketing,GMV))+geom_point()+ geom_smooth()+ labs(x = "Online Marketing", y = "GMV"),
-  ggplot(HomeAudio_final,aes(Affiliates,GMV))+geom_point()+ geom_smooth()+ labs(x = "Affiliates", y = "GMV"),
-  ggplot(HomeAudio_final,aes(SEM,GMV))+geom_point()+ geom_smooth()+ labs(x = "SEM", y = "GMV")
+  ggplot(CameraAccessory_Premium_final,aes(TV,GMV))+geom_point()+ geom_smooth()+ labs(x = "TV Advertisment", y = "GMV"),
+  ggplot(CameraAccessory_Premium_final,aes(Digital,GMV))+geom_point()+ geom_smooth()+ labs(x = "Digital Advertisment", y = "GMV"),
+  ggplot(CameraAccessory_Premium_final,aes(Sponsorship,GMV))+geom_point()+ geom_smooth()+ labs(x = "Sponsorship", y = "GMV"),
+  ggplot(CameraAccessory_Premium_final,aes(Content.Marketing,GMV))+geom_point()+ geom_smooth()+ labs(x = "Content Marketing", y = "GMV"),
+  ggplot(CameraAccessory_Premium_final,aes(Online_marketing,GMV))+geom_point()+ geom_smooth()+ labs(x = "Online Marketing", y = "GMV"),
+  ggplot(CameraAccessory_Premium_final,aes(Affiliates,GMV))+geom_point()+ geom_smooth()+ labs(x = "Affiliates", y = "GMV"),
+  ggplot(CameraAccessory_Premium_final,aes(SEM,GMV))+geom_point()+ geom_smooth()+ labs(x = "SEM", y = "GMV")
+)
+
+# Home Audios
+plot_grid(
+  ggplot(HomeAudio_Mass_final,aes(TV,GMV))+geom_point()+ geom_smooth()+ labs(x = "TV Advertisment", y = "GMV"),
+  ggplot(HomeAudio_Mass_final,aes(Digital,GMV))+geom_point()+ geom_smooth()+ labs(x = "Digital Advertisment", y = "GMV"),
+  ggplot(HomeAudio_Mass_final,aes(Sponsorship,GMV))+geom_point()+ geom_smooth()+ labs(x = "Sponsorship", y = "GMV"),
+  ggplot(HomeAudio_Mass_final,aes(Content.Marketing,GMV))+geom_point()+ geom_smooth()+ labs(x = "Content Marketing", y = "GMV"),
+  ggplot(HomeAudio_Mass_final,aes(Online_marketing,GMV))+geom_point()+ geom_smooth()+ labs(x = "Online Marketing", y = "GMV"),
+  ggplot(HomeAudio_Mass_final,aes(Affiliates,GMV))+geom_point()+ geom_smooth()+ labs(x = "Affiliates", y = "GMV"),
+  ggplot(HomeAudio_Mass_final,aes(SEM,GMV))+geom_point()+ geom_smooth()+ labs(x = "SEM", y = "GMV")
 )
 
 
 # Gaming Accessory
 plot_grid(
-  ggplot(GamingAccessory_final,aes(TV,GMV))+geom_point()+ geom_smooth()+ labs(x = "TV Advertisment", y = "GMV"),
-  ggplot(GamingAccessory_final,aes(Digital,GMV))+geom_point()+ geom_smooth()+ labs(x = "Digital Advertisment", y = "GMV"),
-  ggplot(GamingAccessory_final,aes(Sponsorship,GMV))+geom_point()+ geom_smooth()+ labs(x = "Sponsorship", y = "GMV"),
-  ggplot(GamingAccessory_final,aes(Content.Marketing,GMV))+geom_point()+ geom_smooth()+ labs(x = "Content Marketing", y = "GMV"),
-  ggplot(GamingAccessory_final,aes(Online.marketing,GMV))+geom_point()+ geom_smooth()+ labs(x = "Online Marketing", y = "GMV"),
-  ggplot(GamingAccessory_final,aes(Affiliates,GMV))+geom_point()+ geom_smooth()+ labs(x = "Affiliates", y = "GMV"),
-  ggplot(GamingAccessory_final,aes(SEM,GMV))+geom_point()+ geom_smooth()+ labs(x = "SEM", y = "GMV")
+  ggplot(GamingAccessory_Mass_final,aes(TV,GMV))+geom_point()+ geom_smooth()+ labs(x = "TV Advertisment", y = "GMV"),
+  ggplot(GamingAccessory_Mass_final,aes(Digital,GMV))+geom_point()+ geom_smooth()+ labs(x = "Digital Advertisment", y = "GMV"),
+  ggplot(GamingAccessory_Mass_final,aes(Sponsorship,GMV))+geom_point()+ geom_smooth()+ labs(x = "Sponsorship", y = "GMV"),
+  ggplot(GamingAccessory_Mass_final,aes(Content.Marketing,GMV))+geom_point()+ geom_smooth()+ labs(x = "Content Marketing", y = "GMV"),
+  ggplot(GamingAccessory_Mass_final,aes(Online_marketing,GMV))+geom_point()+ geom_smooth()+ labs(x = "Online Marketing", y = "GMV"),
+  ggplot(GamingAccessory_Mass_final,aes(Affiliates,GMV))+geom_point()+ geom_smooth()+ labs(x = "Affiliates", y = "GMV"),
+  ggplot(GamingAccessory_Mass_final,aes(SEM,GMV))+geom_point()+ geom_smooth()+ labs(x = "SEM", y = "GMV")
 )
 
 plot_grid(
-  ggplot(CameraAccessory_final,aes(order_week,GMV, fill = as.factor(ifelse(holiday_freq>0,1,0))))+geom_bar(stat="identity") + labs(fill = "Is Holiday:", x = "Week", y = "GMV"),
-  ggplot(HomeAudio_final,aes(order_week,GMV, fill = as.factor(ifelse(holiday_freq>0,1,0))))+geom_bar(stat="identity") + labs(fill = "Is Holiday:", x = "Week", y = "GMV"),
-  ggplot(GamingAccessory_final,aes(order_week,GMV, fill = as.factor(ifelse(holiday_freq>0,1,0))))+geom_bar(stat="identity") + labs(fill = "Is Holiday:", x = "Week", y = "GMV"),
-  ggplot(CameraAccessory_final,aes(order_week,Discount_Percent, fill = as.factor(ifelse(holiday_freq>0,1,0))))+geom_bar(stat="identity") + labs(fill = "Is Holiday:", x = "Week", y = "Discount Percent", title="Camera Accessory"),
-  ggplot(HomeAudio_final,aes(order_week,Discount_Percent, fill = as.factor(ifelse(holiday_freq>0,1,0))))+geom_bar(stat="identity") + labs(fill = "Is Holiday:", x = "Week", y = "Discount Percent",title="Home Audio"),
-  ggplot(GamingAccessory_final,aes(order_week,Discount_Percent, fill = as.factor(ifelse(holiday_freq>0,1,0))))+geom_bar(stat="identity") + labs(fill = "Is Holiday:", x = "Week", y = "Discount Percent", title="Game Accessory")
+  ggplot(CameraAccessory_Mass_final,aes(order_week,GMV, fill = as.factor(ifelse(holiday_freq>0,1,0))))+geom_bar(stat="identity") + labs(fill = "Is Holiday:", x = "Week", y = "GMV"),
+  ggplot(HomeAudio_Mass_final,aes(order_week,GMV, fill = as.factor(ifelse(holiday_freq>0,1,0))))+geom_bar(stat="identity") + labs(fill = "Is Holiday:", x = "Week", y = "GMV"),
+  ggplot(GamingAccessory_Mass_final,aes(order_week,GMV, fill = as.factor(ifelse(holiday_freq>0,1,0))))+geom_bar(stat="identity") + labs(fill = "Is Holiday:", x = "Week", y = "GMV"),
+  ggplot(CameraAccessory_Mass_final,aes(order_week,Discount_Percent, fill = as.factor(ifelse(holiday_freq>0,1,0))))+geom_bar(stat="identity") + labs(fill = "Is Holiday:", x = "Week", y = "Discount Percent", title="Camera Accessory"),
+  ggplot(HomeAudio_Mass_final,aes(order_week,Discount_Percent, fill = as.factor(ifelse(holiday_freq>0,1,0))))+geom_bar(stat="identity") + labs(fill = "Is Holiday:", x = "Week", y = "Discount Percent",title="Home Audio"),
+  ggplot(GamingAccessory_Mass_final,aes(order_week,Discount_Percent, fill = as.factor(ifelse(holiday_freq>0,1,0))))+geom_bar(stat="identity") + labs(fill = "Is Holiday:", x = "Week", y = "Discount Percent", title="Game Accessory")
   
 )
 #######################################################################################################################################################
