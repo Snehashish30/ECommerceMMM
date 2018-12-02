@@ -22,6 +22,19 @@ productlist <- read.csv("ProductList.csv")
 investments <- read.csv("Investment.csv")
 nps_Score <- read.csv("NPS.csv")
 
+length(which(rawdata$product_analytic_vertical == "\\N"))
+
+sapply(rawdata, function(x) length(which(x == "\\N")))
+#Here \N is for NULL
+# We have '\N' symbol for columns 
+# deliverybdays 1312972,
+# deliverycdays 1312971,
+# product_analytic_vertical 5828
+# since we have so many null in deliverybdays and deliverycdays, we will drop the columns
+
+rawdata$product_analytic_vertical[which(rawdata$product_analytic_vertical=="\\N")] <- NA
+
+sum(is.na(rawdata$product_analytic_vertical))
 
 # Change the NA values from investments to 0
 investments[is.na(investments)]<- 0
@@ -47,7 +60,7 @@ summary(rawdata)
 # Since the data to be used is from July 2015 to June 2016, removing the orders which is earlier than July 2015 and
 # orders placed after June 2016
 rawdata <- subset(rawdata,(Year==2015 & Month>=7) | (Year==2016 & Month<=6))
-
+rawdata <- rawdata%>%filter(Product_Sub_Category %in% c("CameraAccessory","HomeAudio","GamingAccessory"))
 
 
 #Creating a new Date Column for order date
@@ -132,9 +145,6 @@ rawdata$COD_orders <- ifelse(rawdata$Payment_Type=="COD",1,0)
 
 ############## Applying K- Means to cluster the products ##############
 RFM_Data_analysis <- rawdata[,c("FSN_ID","Order_Date","Order_ID","Cust_ID","Product_MRP","Units","order_week","Product_Vertical")]
-RFM_Data_analysis[which(RFM_Data_analysis$Product_Vertical == "\\N"),"Product_Vertical"] <- NA
-sum(is.na(RFM_Data_analysis$Product_Vertical))
-RFM_Data_analysis <- stats::na.omit(RFM_Data_analysis)
 RFM_Data_analysis <- RFM_Data_analysis[order(RFM_Data_analysis$FSN_ID),]
 
 ## Making RFM data
@@ -182,7 +192,10 @@ unique(prod_vertical$Product_Vertical)
 p <- unique(RFM$Product_Vertical)
 p[which(p == "\\N")]
 data <- RFM[0,]
+data$ptag <- NULL
+data$ptag_correct <- NULL
 length(p)
+
 for(i in 1:length(p)){
   dataset_grp <- RFM%>%filter(Product_Vertical == p[i])
   # we can remove outliers or check without removal to find the best cluster results 
@@ -209,11 +222,64 @@ for(i in 1:length(p)){
     RFM_norm1 <- RFM_norm1[,c("FSN_ID","ptag")]
     
   }
+  RFM_norm1 <- RFM_norm1[,c("FSN_ID","ptag")]
+  RFM1 <- merge(RFM,RFM_norm1,by = ("FSN_ID"))
+  RFM1$ptag_correct <- NA
+  if(nrow(RFM1%>%filter(ptag == 1))>0){
+    temp <- RFM1%>%filter(ptag == 1)
+    ptag1_medFreq <- median(temp$Freq)
+  }
+  else{
+    ptag1_medFreq<-0
+  }
+  if(nrow(RFM1%>%filter(ptag == 2))>0){
+    temp <- RFM1%>%filter(ptag == 2)
+    ptag2_medFreq <- median(temp$Freq)
+  }
+  else{
+    ptag2_medFreq<-0
+  }  
+  if(nrow(RFM1%>%filter(ptag == 3))>0){
+    temp <- RFM1%>%filter(ptag == 3)
+    ptag3_medFreq <- median(temp$Freq)
+  }
+  else{
+    ptag3_medFreq<-0
+  }
   
-
-  RFM <- merge(RFM,RFM_norm1,by = ("FSN_ID"))
-  data <- rbind(data,RFM)
+  num<- unique(c(ptag1_medFreq,ptag2_medFreq,ptag3_medFreq))
+  if(length(num) == 3){
+    tags <- data.frame(c(1,2,3),c(ptag1_medFreq,ptag2_medFreq,ptag3_medFreq))
+    colnames(tags) <- c("tags","tag_freq")
+    tags_order <- tags%>%arrange(desc(tag_freq))
+    RFM1[which(RFM1$ptag ==tags_order[1,1]),"ptag_correct"] <- "Mass"
+    RFM1[which(RFM1$ptag ==tags_order[2,1]),"ptag_correct"] <- "Aspiring"
+    RFM1[which(RFM1$ptag ==tags_order[3,1]),"ptag_correct"] <- "Premium"
+  }
+  if(length(num) == 2){
+    tags <- data.frame(c(1,2,3),c(ptag1_medFreq,ptag2_medFreq,ptag3_medFreq))
+    colnames(tags) <- c("tags","tag_freq")
+    tags_order <- tags%>%arrange(desc(tag_freq))
+    RFM1[which(RFM1$ptag ==tags_order[1,1]),"ptag_correct"] <- "Mass"
+    RFM1[which(RFM1$ptag ==tags_order[2,1]),"ptag_correct"] <- "Premium"
+  }
+  if(length(num) == 1){
+    tags <- data.frame(c(1,2,3),c(ptag1_medFreq,ptag2_medFreq,ptag3_medFreq))
+    colnames(tags) <- c("tags","tag_freq")
+    tags_order <- tags%>%arrange(desc(tag_freq))
+    RFM1[which(RFM1$ptag ==tags_order[1,1]),"ptag_correct"] <- "Mass"
+  }
+  data <- rbind(data,RFM1)
 }
+
+# clustering complete 
+t <- data%>%group_by(Product_Vertical,ptag_correct)%>%summarise(avg_price = median(Product_MRP),
+                                                        avg_freq = median(Freq),
+                                                        avg_rec = median(Recency),
+                                                        cnt = length(Product_Vertical))%>%arrange(Product_Vertical,avg_freq)
+
+View(t)
+
 
 box <- boxplot.stats(RFM$Product_MRP)
 out <- box$out
