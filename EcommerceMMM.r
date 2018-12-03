@@ -364,7 +364,9 @@ rm(tags_order)
 
 rawdata$holiday_flg <- ifelse(is.na(match(rawdata$order_week,holiday_df$order_week)),0,1)
 orders<- merge(rawdata,nps_Score, by.x=c("Year","Month"))
-orders <- merge(orders,productlist, by.x = c("Product_Vertical"), by.y = c("ï..Product"))
+colnames(productlist)[1]<- "Product"
+colnames(orders)[31]<-"Product_Vertical"
+orders <- merge(orders,productlist, by.x = c("Product_Vertical"), by.y = c("Product"))
 
 #Outlier treatment
 
