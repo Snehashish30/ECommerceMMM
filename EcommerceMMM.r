@@ -515,6 +515,53 @@ plot_grid(
   ggplot(GamingAccessory_Mass_final,aes(order_week,Discount_Percent, fill = as.factor(ifelse(holiday_freq>0,1,0))))+geom_bar(stat="identity") + labs(fill = "Is Holiday:", x = "Week", y = "Discount Percent", title="Game Accessory")
   
 )
+
+
+#######################################################################################################################################################
+
+#Linear models
+
+#Camera Accesories
+#MASS
+CameraAccessory_lin_model <- data.frame((CameraAccessory_Mass_final[,-c(1)]))
+model_1 <-lm(GMV~.,data=CameraAccessory_lin_model)
+summary(model_1)
+
+step <- stepAIC(model_1, direction="both")
+step
+
+model_CameraAccessory_Mass_lin <- lm(formula = GMV ~ List_Price + SLA + Discount_Percent + 
+                                       Product_Procurement_SLA + prepaid_orders + COD_orders + 
+                                       Digital + Sponsorship + Online_marketing
+                                     , data = CameraAccessory_lin_model)
+summary(model_CameraAccessory_Mass_lin)
+
+#Premium
+CameraAccessory_lin_model <- data.frame((CameraAccessory_Premium_final[,-c(1)]))
+model_1 <-lm(GMV~.,data=CameraAccessory_lin_model)
+summary(model_1)
+
+step <- stepAIC(model_1, direction="both")
+step
+
+model_CameraAccessory_Premium_lin <- lm(formula = GMV ~ Product_MRP + SLA + Product_Procurement_SLA + 
+                                          Units + TV + Digital + Sponsorship + Online_marketing + Affiliates, 
+                                        data = CameraAccessory_lin_model)
+summary(model_CameraAccessory_Mass_lin)
+
+#Aspiring
+CameraAccessory_lin_model <- data.frame(scale(CameraAccessory_Aspiring_final[,-c(1)]))
+model_1 <-lm(GMV~.,data=CameraAccessory_lin_model)
+summary(model_1)
+
+step <- stepAIC(model_1, direction="both")
+step
+
+model_CameraAccessory_Aspiring_lin <- lm(formula = GMV ~ List_Price + Product_MRP + SLA + Discount_Percent + 
+                                          NPS + prepaid_orders + COD_orders + 
+                                          Digital + Sponsorship + Content.Marketing + Online_marketing + 
+                                          Affiliates, data = CameraAccessory_lin_model)
+summary(model_CameraAccessory_Aspiring_lin)
 #######################################################################################################################################################
 lagvar <- function(df){
   
@@ -561,25 +608,9 @@ lagvar <- function(df){
   lag_df <- slide(data=lag_df,Var = "COD_orders", slideBy = -2)
   lag_df <- slide(data=lag_df,Var = "COD_orders", slideBy = -3)
   
-  lag_df <- slide(data=lag_df,Var = "ProductSellCategory_1", slideBy = -1)
-  lag_df <- slide(data=lag_df,Var = "ProductSellCategory_1", slideBy = -2)
-  lag_df <- slide(data=lag_df,Var = "ProductSellCategory_1", slideBy = -3)
-  
-  lag_df <- slide(data=lag_df,Var = "ProductSellCategory_2", slideBy = -1)
-  lag_df <- slide(data=lag_df,Var = "ProductSellCategory_2", slideBy = -2)
-  lag_df <- slide(data=lag_df,Var = "ProductSellCategory_2", slideBy = -3)
-  
-  lag_df <- slide(data=lag_df,Var = "ProductSellCategory_3", slideBy = -1)
-  lag_df <- slide(data=lag_df,Var = "ProductSellCategory_3", slideBy = -2)
-  lag_df <- slide(data=lag_df,Var = "ProductSellCategory_3", slideBy = -3)
-  
-  lag_df <- slide(data=lag_df,Var = "ProductSellCategory_4", slideBy = -1)
-  lag_df <- slide(data=lag_df,Var = "ProductSellCategory_4", slideBy = -2)
-  lag_df <- slide(data=lag_df,Var = "ProductSellCategory_4", slideBy = -3)
-  
-  lag_df <- slide(data=lag_df,Var = "SLA_Breach", slideBy = -1)
-  lag_df <- slide(data=lag_df,Var = "SLA_Breach", slideBy = -2)
-  lag_df <- slide(data=lag_df,Var = "SLA_Breach", slideBy = -3)
+  # lag_df <- slide(data=lag_df,Var = "SLA_Breach", slideBy = -1)
+  # lag_df <- slide(data=lag_df,Var = "SLA_Breach", slideBy = -2)
+  # lag_df <- slide(data=lag_df,Var = "SLA_Breach", slideBy = -3)
   
   #lag_df<-lag_df[,-c(30,31,32,36,37,38)]
   
@@ -616,22 +647,6 @@ MA_AVG <- function(df){
   df$Product_Procurement_SLA_MA2 <- rollmean(df$Product_Procurement_SLA, k=3,fill=NA, align = "right")
   df$Product_Procurement_SLA_MA3 <- rollmean(df$Product_Procurement_SLA, k=4,fill=NA, align = "right")
   
-  df$ProductSellCategory_1_MA1 <- rollmean(df$ProductSellCategory_1, k=2,fill=NA, align = "right")  
-  df$ProductSellCategory_1_MA2 <- rollmean(df$ProductSellCategory_1, k=3,fill=NA, align = "right")
-  df$ProductSellCategory_1_MA3 <- rollmean(df$ProductSellCategory_1, k=4,fill=NA, align = "right")
-  
-  df$ProductSellCategory_2_MA1 <- rollmean(df$ProductSellCategory_2, k=2,fill=NA, align = "right")  
-  df$ProductSellCategory_2_MA2 <- rollmean(df$ProductSellCategory_2, k=3,fill=NA, align = "right")
-  df$ProductSellCategory_2_MA3 <- rollmean(df$ProductSellCategory_2, k=4,fill=NA, align = "right")
-  
-  df$ProductSellCategory_3_MA1 <- rollmean(df$ProductSellCategory_3, k=2,fill=NA, align = "right")  
-  df$ProductSellCategory_3_MA2 <- rollmean(df$ProductSellCategory_3, k=3,fill=NA, align = "right")
-  df$ProductSellCategory_3_MA3 <- rollmean(df$ProductSellCategory_3, k=4,fill=NA, align = "right")
-  
-  df$ProductSellCategory_4_MA1 <- rollmean(df$ProductSellCategory_4, k=2,fill=NA, align = "right")  
-  df$ProductSellCategory_4_MA2 <- rollmean(df$ProductSellCategory_4, k=3,fill=NA, align = "right")
-  df$ProductSellCategory_4_MA3 <- rollmean(df$ProductSellCategory_4, k=4,fill=NA, align = "right")
-  
   df$prepaid_orders_MA1 <- rollmean(df$prepaid_orders, k=2,fill=NA, align = "right")  
   df$prepaid_orders_MA2 <- rollmean(df$prepaid_orders, k=3,fill=NA, align = "right")
   df$prepaid_orders_MA3 <- rollmean(df$prepaid_orders, k=4,fill=NA, align = "right")
@@ -644,9 +659,9 @@ MA_AVG <- function(df){
   df$holiday_freq_MA2 <- rollmean(df$holiday_freq, k=3,fill=NA, align = "right")
   df$holiday_freq_MA3 <- rollmean(df$holiday_freq, k=4,fill=NA, align = "right")
   
-  df$SLA_Breach_MA1 <- rollmean(df$SLA_Breach, k=2,fill=NA, align = "right")  
-  df$SLA_Breach_MA2 <- rollmean(df$SLA_Breach, k=3,fill=NA, align = "right")
-  df$SLA_Breach_MA3 <- rollmean(df$SLA_Breach, k=4,fill=NA, align = "right")
+  # df$SLA_Breach_MA1 <- rollmean(df$SLA_Breach, k=2,fill=NA, align = "right")  
+  # df$SLA_Breach_MA2 <- rollmean(df$SLA_Breach, k=3,fill=NA, align = "right")
+  # df$SLA_Breach_MA3 <- rollmean(df$SLA_Breach, k=4,fill=NA, align = "right")
   
   df <- na.omit(df)
   
@@ -661,7 +676,7 @@ MA_AVG <- function(df){
 
 cols_to_be_removed <- c ("Units","List_Price","Product_MRP","SLA","prepaid_orders","SLA_Breach","COD_orders","holiday_freq","Product_Procurement_SLA","Discount_Percent","NPS.Score","TV","Digital","Sponsorship","Content.Marketing","Online.marketing","Affiliates","SEM","Radio","Other","ProductSellCategory_1","ProductSellCategory_2","ProductSellCategory_3","ProductSellCategory_4")
 
-CameraAccessory_lag <- lagvar(CameraAccessory_final)
+CameraAccessory_Mass_lag <- lagvar(CameraAccessory_Mass_final)
 CameraAccessory_lag <- CameraAccessory_lag[,!(names(CameraAccessory_lag) %in% cols_to_be_removed)]
 
 
@@ -693,9 +708,13 @@ HomeAudio_MA<-MA_AVG(HomeAudio_final)
 
 ########################################################################################################################################################################################
 
+#EDA on final cluster level data
+
+
+
 #Modelling of the distributed lag for Camera Accessory Segment
 
-CameraAccessory_lag_model <- data.frame(scale(CameraAccessory_lag[,-c(1)]))
+CameraAccessory_lag_model <- data.frame(scale(CameraAccessory_Mass_lag[,-c(1)]))
 
 train = CameraAccessory_lag_model
 
@@ -703,16 +722,10 @@ model_1 <-lm(GMV~.,data=train)
 
 summary(model_1)
 
-step <- stepAIC(model_my, direction="both")
 
-step
 
 final_df
-model_my <- lm(formula = GMV ~ List_Price + Discount_Percent + SLA_Breach +
-                 holiday_freq + NPS + Digital + Sponsorship + Content.Marketing + Online_marketing + 
-                 Affiliates + COD_orders, data = final_df)
 
-summary(model_my)
 
 model_opt <- lm(formula = GMV ~ List_Price + Discount_Percent + SLA_Breach + 
                   NPS + Digital + Sponsorship + Content.Marketing + Online_marketing + 
